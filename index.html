@@ -1,52 +1,40 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Zoomable Whiteboard Grid</title>
+  <meta charset="UTF-8" />
+  <title>Whiteboard Grid</title>
   <style>
     body {
       margin: 0;
       font-family: sans-serif;
-    }
-
-    .toolbar {
-      position: fixed;
-      top: 10px;
-      left: 10px;
-      z-index: 100;
-      background: white;
-      border: 1px solid #ccc;
-      padding: 5px;
-      border-radius: 5px;
-    }
-
-    .toolbar button {
-      font-size: 16px;
-      margin: 2px;
-      padding: 4px 8px;
+      overflow: hidden;
     }
 
     .container {
       display: flex;
       height: 100vh;
-      overflow: hidden;
     }
 
-    .scale-column {
+    .scale-wrapper {
       width: 60px;
-      background: #f3f3f3;
+      background: #f0f0f0;
       border-right: 2px solid #ccc;
       overflow-y: scroll;
-      text-align: right;
-      padding-right: 5px;
-      font-size: 12px;
-      position: sticky;
-      left: 0;
-      z-index: 1;
+    }
+
+    .scale {
+      display: flex;
+      flex-direction: column;
+      font-weight: bold;
+      color: #333;
     }
 
     .scale-cell {
-      border-bottom: 1px solid #e0e0e0;
+      height: 25px;
+      line-height: 25px;
+      text-align: right;
+      padding-right: 6px;
+      border-bottom: 1px solid #ddd;
     }
 
     .grid-wrapper {
@@ -56,11 +44,16 @@
 
     .grid {
       display: grid;
+      grid-template-columns: repeat(100, 25px);
     }
 
     .cell {
-      border: 1px solid #ccc;
+      width: 25px;
+      height: 25px;
+      font-size: 16px;
       text-align: center;
+      line-height: 25px;
+      border: 1px solid #ccc;
       user-select: none;
       cursor: pointer;
     }
@@ -68,32 +61,24 @@
 </head>
 <body>
 
-<!-- Zoom Buttons -->
-<div class="toolbar">
-  <button onclick="zoom(1.1)">➕ Zoom In</button>
-  <button onclick="zoom(0.9)">➖ Zoom Out</button>
-  <button onclick="zoom(1, true)">🔄 Reset</button>
-</div>
-
 <div class="container">
-  <div class="scale-column" id="scale"></div>
-  <div class="grid-wrapper">
+  <div class="scale-wrapper" id="scaleWrapper">
+    <div class="scale" id="scale"></div>
+  </div>
+  <div class="grid-wrapper" id="gridWrapper">
     <div class="grid" id="board"></div>
   </div>
 </div>
 
 <script>
+  const rowCount = 401; // From 5000 to 3000 in -5 steps
+  const colCount = 100;
   const board = document.getElementById("board");
   const scale = document.getElementById("scale");
+  const gridWrapper = document.getElementById("gridWrapper");
+  const scaleWrapper = document.getElementById("scaleWrapper");
 
-  const rowCount = 401; // 5000 → 3000
-  const colCount = 100;
-  let zoomLevel = 1; // Default zoom
-
-  // Initial cell size (pixels)
-  const baseCellSize = 25;
-
-  // Render scale
+  // Generate scale numbers (5000 → 3000)
   for (let i = 5000; i >= 3000; i -= 5) {
     const scaleCell = document.createElement("div");
     scaleCell.className = "scale-cell";
@@ -101,54 +86,22 @@
     scale.appendChild(scaleCell);
   }
 
-  // Generate grid
+  // Generate grid cells
   for (let r = 0; r < rowCount; r++) {
     for (let c = 0; c < colCount; c++) {
       const cell = document.createElement("div");
       cell.className = "cell";
       cell.onclick = () => {
-        if (cell.textContent === "") {
-          cell.textContent = "❌";
-        } else if (cell.textContent === "❌") {
-          cell.textContent = "✅";
-        } else {
-          cell.textContent = "";
-        }
+        cell.textContent = cell.textContent === "" ? "❌" : "";
       };
       board.appendChild(cell);
     }
   }
 
-  // Apply zoom styling
-  function applyZoom() {
-    const size = baseCellSize * zoomLevel;
-    board.style.gridTemplateColumns = `repeat(${colCount}, ${size}px)`;
-    document.querySelectorAll('.cell').forEach(cell => {
-      cell.style.width = `${size}px`;
-      cell.style.height = `${size}px`;
-      cell.style.lineHeight = `${size}px`;
-      cell.style.fontSize = `${size * 0.6}px`;
-    });
-    document.querySelectorAll('.scale-cell').forEach(cell => {
-      cell.style.height = `${size}px`;
-      cell.style.lineHeight = `${size}px`;
-      cell.style.fontSize = `${size * 0.4}px`;
-    });
-  }
-
-  // Zoom function
-  function zoom(factor, reset = false) {
-    if (reset) {
-      zoomLevel = 1;
-    } else {
-      zoomLevel *= factor;
-      zoomLevel = Math.max(0.4, Math.min(2.5, zoomLevel)); // Clamp
-    }
-    applyZoom();
-  }
-
-  // Initial render
-  applyZoom();
+  // Sync vertical scroll
+  gridWrapper.addEventListener("scroll", () => {
+    scaleWrapper.scrollTop = gridWrapper.scrollTop;
+  });
 </script>
 
 </body>

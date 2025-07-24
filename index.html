@@ -15,14 +15,19 @@
       height: 100vh;
     }
 
-    .scale-wrapper {
-      width: 60px;
+    .scale-wrapper,
+    .middle-col,
+    .right-col {
+      width: 80px;
       background: #f0f0f0;
       border-right: 2px solid #ccc;
       overflow-y: scroll;
+      user-select: none;
     }
 
-    .scale {
+    .scale,
+    .middle-scale,
+    .right-scale {
       display: flex;
       flex-direction: column;
       font-weight: bold;
@@ -37,14 +42,26 @@
       border-bottom: 1px solid #ddd;
     }
 
+    .middle-cell,
+    .right-cell {
+      height: 25px;
+      line-height: 25px;
+      text-align: center;
+      border-bottom: 1px solid #ddd;
+      cursor: move;
+      background-color: #eaeaea;
+    }
+
     .grid-wrapper {
       overflow: scroll;
       flex-grow: 1;
+      position: relative;
     }
 
     .grid {
       display: grid;
       grid-template-columns: repeat(100, 25px);
+      width: max-content;
     }
 
     .cell {
@@ -57,6 +74,33 @@
       user-select: none;
       cursor: pointer;
     }
+
+    .row-hover .cell {
+      background-color: #fef3bd;
+    }
+
+    .overlay-col {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      overflow-y: scroll;
+      background: #f9f9f9;
+      border-left: 2px solid #ccc;
+      z-index: 5;
+    }
+
+    #middleCol {
+      left: 50%;
+      transform: translateX(-50%);
+    }
+
+    #rightCol {
+      right: 0;
+    }
+
+    .drag-handle {
+      cursor: move;
+    }
   </style>
 </head>
 <body>
@@ -65,42 +109,115 @@
   <div class="scale-wrapper" id="scaleWrapper">
     <div class="scale" id="scale"></div>
   </div>
+
   <div class="grid-wrapper" id="gridWrapper">
     <div class="grid" id="board"></div>
+    <div class="overlay-col middle-col" id="middleCol">
+      <div class="middle-scale" id="middleScale"></div>
+    </div>
+    <div class="overlay-col right-col" id="rightCol">
+      <div class="right-scale" id="rightScale"></div>
+    </div>
   </div>
 </div>
 
 <script>
-  const rowCount = 401; // From 5000 to 3000 in -5 steps
+  const rowCount = 401; // 5000 → 3000
   const colCount = 100;
   const board = document.getElementById("board");
   const scale = document.getElementById("scale");
+  const middleScale = document.getElementById("middleScale");
+  const rightScale = document.getElementById("rightScale");
   const gridWrapper = document.getElementById("gridWrapper");
   const scaleWrapper = document.getElementById("scaleWrapper");
+  const middleCol = document.getElementById("middleCol");
+  const rightCol = document.getElementById("rightCol");
 
-  // Generate scale numbers (5000 → 3000)
+  // Scale: 5000 → 3000, step -5
   for (let i = 5000; i >= 3000; i -= 5) {
+    // Left scale
     const scaleCell = document.createElement("div");
     scaleCell.className = "scale-cell";
     scaleCell.textContent = i;
     scale.appendChild(scaleCell);
+
+    // Middle column (just last digit, 0 or 5)
+    const midCell = document.createElement("div");
+    midCell.className = "middle-cell drag-handle";
+    midCell.textContent = i % 10 === 0 ? "0" : "5";
+    middleScale.appendChild(midCell);
+
+    // Right column (same logic)
+    const rightCell = document.createElement("div");
+    rightCell.className = "right-cell drag-handle";
+    rightCell.textContent = i % 10 === 0 ? "0" : "5";
+    rightScale.appendChild(rightCell);
   }
 
-  // Generate grid cells
+  // Grid
+  const rows = [];
   for (let r = 0; r < rowCount; r++) {
+    const row = [];
     for (let c = 0; c < colCount; c++) {
       const cell = document.createElement("div");
       cell.className = "cell";
+      cell.dataset.row = r;
+      cell.dataset.col = c;
       cell.onclick = () => {
         cell.textContent = cell.textContent === "" ? "❌" : "";
       };
       board.appendChild(cell);
+      row.push(cell);
     }
+    rows.push(row);
   }
 
-  // Sync vertical scroll
+  // Scroll syncing
   gridWrapper.addEventListener("scroll", () => {
     scaleWrapper.scrollTop = gridWrapper.scrollTop;
+    middleCol.scrollTop = gridWrapper.scrollTop;
+    rightCol.scrollTop = gridWrapper.scrollTop;
+  });
+
+  // Highlight row on hover
+  board.addEventListener("mouseover", e => {
+    if (e.target.classList.contains("cell")) {
+      const rowIndex = +e.target.dataset.row;
+      rows[rowIndex].forEach(cell => cell.classList.add("row-hover"));
+    }
+  });
+
+  board.addEventListener("mouseout", e => {
+    if (e.target.classList.contains("cell")) {
+      const rowIndex = +e.target.dataset.row;
+      rows[rowIndex].forEach(cell => cell.classList.remove("row-hover"));
+    }
+  });
+
+  // Draggable overlay columns
+  [middleCol, rightCol].forEach(col => {
+    let isDragging = false;
+    let startX, startLeft;
+
+    col.addEventListener("mousedown", e => {
+      if (!e.target.classList.contains("drag-handle")) return;
+      isDragging = true;
+      startX = e.clientX;
+      startLeft = col.offsetLeft;
+      document.body.style.cursor = "grabbing";
+    });
+
+    window.addEventListener("mousemove", e => {
+      if (!isDragging) return;
+      const dx = e.clientX - startX;
+      col.style.left = `${startLeft + dx}px`;
+      col.style.right = "auto"; // remove conflicting style
+    });
+
+    window.addEventListener("mouseup", () => {
+      isDragging = false;
+      document.body.style.cursor = "default";
+    });
   });
 </script>
 
